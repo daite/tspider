@@ -1,1 +1,4 @@
  *.html linguist-detectable=false
+
+# Exclude Makefile from language statistics
+Makefile linguist-generated=true
