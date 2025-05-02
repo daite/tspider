@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -25,23 +24,12 @@ type ScrapingEx interface {
 	Crawl(string) map[string][]string
 }
 
-// Color constants for progress output
-const (
-	Reset = "\033[0m"
-	Green = "\033[32m"
-	Red   = "\033[31m"
-)
-
 // variable for scraping
 var (
 	TorrentURL = map[string]string{
-		"nyaa":        "https://nyaa.si",
-		"sukebe":      "https://sukebei.nyaa.si",
-		"torrentsee":  "torrentsee",
-		"torrentqq":   "torrentqq",
-		"torrentsome": "torrentsome",
-		"torrentrj":   "torrentrj",
-		"torrenttop":  "torrenttop",
+		"nyaa":       "https://nyaa.si",
+		"sukebe":     "https://sukebei.nyaa.si",
+		"torrenttop": "https://torrenttop152.com",
 	}
 	UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_1_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.96 Safari/537.36"
 )
@@ -192,7 +180,7 @@ func GetAvailableSites(oldItems []Scraping) []Scraping {
 	fmt.Println("\r[*] Angel is checking available torrent sites ...")
 	newItems := make([]Scraping, 0)
 	items := []string{
-		"torrentsee", "torrentqq", "torrentsome", "torrentrj", "torrenttop",
+		"torrenttop",
 	}
 	ch := make(chan int, len(items))
 	var wg sync.WaitGroup
@@ -252,114 +240,4 @@ func RemoveNonAscII(s string) string {
 		}
 	}
 	return result.String()
-}
-
-// ------------------------------------------------------------------------------
-// New functions to scrape torrent URLs from an HTML table and update TorrentURL
-// with alignment for Korean site names and a spinner indicator.
-// ------------------------------------------------------------------------------
-
-// FetchTorrentURLsFromHTML fetches the HTML page at scrapeURL, parses the table rows,
-// and returns a map of raw site names (in Korean) to their URLs.
-func FetchTorrentURLsFromHTML(scrapeURL string) (map[string]string, error) {
-	resp, err := http.Get(scrapeURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch page: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
-	}
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse HTML: %v", err)
-	}
-	torrentURLs := make(map[string]string)
-	doc.Find("tr").Each(func(i int, s *goquery.Selection) {
-		tds := s.Find("td")
-		if tds.Length() >= 3 {
-			rawSiteName := strings.TrimSpace(tds.Eq(1).Text())
-			link, exists := tds.Eq(2).Find("a").Attr("href")
-			if exists && rawSiteName != "" && link != "" {
-				torrentURLs[rawSiteName] = link
-			}
-		}
-	})
-	return torrentURLs, nil
-}
-
-// alignSiteName maps the Korean site name to the internal English key.
-func alignSiteName(koreanName string) string {
-	switch koreanName {
-	case "토렌트씨":
-		return "torrentsee"
-	case "토렌트큐큐":
-		return "torrentqq"
-	case "토렌트탑":
-		return "torrenttop"
-	case "토렌트알지":
-		return "torrentrj"
-	case "토렌트썸":
-		return "torrentsome"
-	default:
-		return ""
-	}
-}
-
-// spinner displays a rotating indicator until signaled to stop.
-func spinner(msg string, done chan bool) {
-	spinChars := []rune{'\\', '|', '/', '-'}
-	i := 0
-	for {
-		select {
-		case <-done:
-			blanks := strings.Repeat(" ", len(msg)+2)
-			fmt.Printf("\r%s\r", blanks)
-			return
-		default:
-			fmt.Printf("\r%c %s", spinChars[i%len(spinChars)], msg)
-			time.Sleep(100 * time.Millisecond)
-			i++
-		}
-	}
-}
-
-// UpdateTorrentURLsFromHTMLWithProgress fetches torrent URLs from the provided scrapeURL,
-// aligns the Korean site names to internal keys, and updates the global TorrentURL map
-// while displaying a spinner.
-func UpdateTorrentURLsFromHTMLWithProgress(scrapeURL string) error {
-	newURLs, err := FetchTorrentURLsFromHTML(scrapeURL)
-	if err != nil {
-		return err
-	}
-	var alignedUpdates []struct {
-		key string
-		url string
-	}
-	for rawName, url := range newURLs {
-		alignedKey := alignSiteName(rawName)
-		if alignedKey != "" {
-			alignedUpdates = append(alignedUpdates, struct {
-				key string
-				url string
-			}{alignedKey, url})
-		}
-	}
-	total := len(alignedUpdates)
-	if total == 0 {
-		log.Println("No matching torrent URLs found for update.")
-		return nil
-	}
-
-	done := make(chan bool)
-	go spinner("Updating torrent URLs...", done)
-
-	for _, update := range alignedUpdates {
-		TorrentURL[update.key] = update.url
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	done <- true
-	return nil
 }

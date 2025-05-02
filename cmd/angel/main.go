@@ -44,17 +44,8 @@ func main() {
 			}
 
 			if c.String("lang") == "kr" {
-				scrapeURL := "http://jaewook.net/archives/2613"
-				err := common.UpdateTorrentURLsFromHTMLWithProgress(scrapeURL)
-				if err != nil {
-					fmt.Printf("Error updating torrent URLs: %v\n", err)
-				}
 
 				sites := []common.Scraping{
-					&ktorrent.TorrentSee{},
-					&ktorrent.TorrentQQ{},
-					&ktorrent.TorrentSome{},
-					&ktorrent.TorrentRJ{},
 					&ktorrent.TorrentTop{},
 				}
 				sites = common.GetAvailableSites(sites)

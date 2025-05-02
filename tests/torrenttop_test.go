@@ -27,9 +27,9 @@ func TestGetDataFuncForTorrentTop(t *testing.T) {
 		got[title] = link
 	})
 	want := map[string]string{
-		"서진이네 2.E01.240628.720p-NEXT": "/torrent/vzla5mq.html",
+		"동상이몽2 너는 내운명.E177.201228.720p-NEXT": "/torrent/jro35vg.html",
 	}
-	if got["서진이네 2.E01.240628.720p-NEXT"] != "/torrent/vzla5mq.html" {
+	if got["동상이몽2 너는 내운명.E177.201228.720p-NEXT"] != "/torrent/jro35vg.html" {
 		t.Errorf("GetData() for TorrentTop = %q, want %q", got, want)
 	}
 }
@@ -45,7 +45,7 @@ func TestGetMagnetFuncForTorrentTop(t *testing.T) {
 		log.Fatal(err)
 	}
 	got, _ := doc.Find(".fas.fa-magnet + a").Attr("href")
-	want := "magnet:?xt=urn:btih:6cf65299b5b48b077370f5675ce34b666e82cc3f"
+	want := "magnet:?xt=urn:btih:6bb34701c93505114029e5c91a0e88a30c11703b"
 	if got != want {
 		t.Errorf("GetMagnet() for TorrentTop = %q, want %q", got, want)
 	}

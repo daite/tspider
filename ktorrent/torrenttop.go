@@ -45,27 +45,34 @@ func (t *TorrentTop) Crawl(keyword string) map[string]string {
 func (t *TorrentTop) getData(url string) *sync.Map {
 	var wg sync.WaitGroup
 	m := &sync.Map{}
+
 	resp, ok := common.GetResponseFromURL(url)
 	if !ok {
 		return nil
 	}
 	defer resp.Body.Close()
+
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
 		return nil
 	}
-	doc.Find("l.py-4.flex.flex-row.border-b.topic-item a").Each(func(i int, s *goquery.Selection) {
+
+	doc.Find(".topic-item a").Each(func(i int, s *goquery.Selection) {
+		title, exists := s.Attr("title")
+		href, linkOk := s.Attr("href")
+		if !exists || !linkOk {
+			return
+		}
+
 		wg.Add(1)
-		go func() {
+		go func(title, href string) {
 			defer wg.Done()
-			title, _ := s.Attr("title")
-			title = strings.TrimSpace(title)
-			link, _ := s.Attr("href")
-			link = strings.TrimSpace(common.URLJoin(common.TorrentURL[t.Name], link))
-			magnet := t.GetMagnet(link)
-			m.Store(title, magnet)
-		}()
+			fullURL := strings.TrimSpace(common.URLJoin(common.TorrentURL[t.Name], href))
+			magnet := t.GetMagnet(fullURL)
+			m.Store(strings.TrimSpace(title), magnet)
+		}(title, href)
 	})
+
 	wg.Wait()
 	t.ScrapedData = m
 	return m
@@ -78,11 +85,25 @@ func (t *TorrentTop) GetMagnet(url string) string {
 		return "failed to fetch magnet"
 	}
 	defer resp.Body.Close()
+
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return err.Error()
+		return fmt.Sprintf("parse error: %v", err)
 	}
-	magnet, _ := doc.Find(".fas.fa-magnet + a").Attr("href")
+
+	magnet := ""
+	doc.Find("i.fas.fa-magnet").Each(func(i int, s *goquery.Selection) {
+		parent := s.Parent()
+		parent.Find("a").EachWithBreak(func(i int, a *goquery.Selection) bool {
+			href, exists := a.Attr("href")
+			if exists && strings.HasPrefix(href, "magnet:?") {
+				magnet = href
+				return false
+			}
+			return true
+		})
+	})
+
 	if magnet == "" {
 		return "no magnet"
 	}
