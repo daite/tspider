@@ -138,6 +138,10 @@ tspider/
 - Refactored for better Go concurrency patterns
 - Renamed project from `angel` to `tspider`
 
+## References
+
+- [Korean Torrent Sites List](http://jaewook.net/archives/2613)
+
 ## License
 
 MIT
