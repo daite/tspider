@@ -1,6 +1,10 @@
 ![example workflow name](https://github.com/daite/tspider/workflows/Go/badge.svg)
 [![GoDoc](https://godoc.org/github.com/daite/tspider?status.png)](http://godoc.org/github.com/daite/tspider)
 
+<p align="center">
+  <img src="logo.png" alt="TSpider Logo" width="600">
+</p>
+
 # TSpider - Torrent Spider CLI
 
 A fast, concurrent torrent search aggregator written in Go.
