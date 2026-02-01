@@ -1,6 +1,6 @@
 # ⚙️ Variables
-APP_NAME := angel
-MAIN_FILE := cmd/angel/main.go
+APP_NAME := tspider
+MAIN_FILE := cmd/tspider/main.go
 BUILD_DIR := bin
 
 # Detect OS type for sed compatibility (Linux or macOS)
@@ -21,6 +21,17 @@ build:
 run: build
 	@echo "🏃 Running..."
 	./$(BUILD_DIR)/$(APP_NAME)
+
+# 🧪 Run tests
+test:
+	@echo "🧪 Running tests..."
+	go test ./... -v
+	@echo "✅ Tests completed!"
+
+# 🩺 Run doctor check
+doctor: build
+	@echo "🩺 Running doctor check..."
+	./$(BUILD_DIR)/$(APP_NAME) doctor
 
 # 🧹 Clean build artifacts
 clean:
@@ -54,5 +65,7 @@ help:
 	@echo "📘 Available commands:"
 	@echo "  make build              - Build the project"
 	@echo "  make run                - Build and run the project"
+	@echo "  make test               - Run all tests"
+	@echo "  make doctor             - Check torrent site availability"
 	@echo "  make clean              - Remove build artifacts"
 	@echo "  make tag TAG=vX.X.X     - Update version in main.go, create an annotated Git tag (vX.X.X format, integers >= 0), and push to GitHub (also updates main branch)"

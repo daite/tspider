@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/daite/angel/common"
+	"github.com/daite/tspider/common"
 )
 
 // Client struct is for sending tasks

@@ -1,4 +1,4 @@
-module github.com/daite/angel
+module github.com/daite/tspider
 
 go 1.21
 

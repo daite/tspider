@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/daite/angel/common"
+	"github.com/daite/tspider/common"
 )
 
 // TorrentWiz struct is for TorrentWiz web site

@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/daite/angel/common"
+	"github.com/daite/tspider/common"
 )
 
 // TorrentGram struct is for TorrentGram web site
