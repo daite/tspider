@@ -260,6 +260,9 @@ func SaveConfig(c *Config) error {
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
+	if err := os.Chmod(path, 0600); err != nil {
+		return fmt.Errorf("failed to set config permissions: %w", err)
+	}
 	config = c
 	// Update TorrentURL map
 	TorrentURL = make(map[string]string)

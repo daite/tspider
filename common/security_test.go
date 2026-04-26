@@ -3,6 +3,7 @@ package common
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -44,6 +45,10 @@ func TestAddSiteAcceptsHTTPSURL(t *testing.T) {
 }
 
 func TestSaveConfigWritesPrivateFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not expose POSIX owner-only permission bits")
+	}
+
 	path := filepath.Join(t.TempDir(), "config.json")
 	resetConfigForTest(t, path)
 
