@@ -3,7 +3,9 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,6 +18,13 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 )
+
+const maxResponseBodyBytes int64 = 10 << 20
+
+type limitedReadCloser struct {
+	io.Reader
+	io.Closer
+}
 
 // Spinner for progress animation
 type Spinner struct {
@@ -228,6 +237,7 @@ func LoadConfig() *Config {
 		if err := json.Unmarshal(data, config); err != nil {
 			config = DefaultConfig()
 		}
+		normalizeConfig(config)
 		// Update TorrentURL map
 		for name, site := range config.Sites {
 			if site.Enabled {
@@ -241,12 +251,13 @@ func LoadConfig() *Config {
 
 // SaveConfig saves the configuration to file
 func SaveConfig(c *Config) error {
+	normalizeConfig(c)
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 	path := GetConfigPath()
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 	config = c
@@ -270,6 +281,9 @@ func GetConfig() *Config {
 
 // SetSiteURL updates a site's URL
 func SetSiteURL(name, url string) error {
+	if err := validateSiteURL(url); err != nil {
+		return err
+	}
 	c := GetConfig()
 	site, exists := c.Sites[name]
 	if !exists {
@@ -282,6 +296,9 @@ func SetSiteURL(name, url string) error {
 
 // AddSite adds a new site configuration
 func AddSite(name, url, language string) error {
+	if err := validateSiteURL(url); err != nil {
+		return err
+	}
 	c := GetConfig()
 	if _, exists := c.Sites[name]; exists {
 		return fmt.Errorf("site '%s' already exists. Use 'angel config set-url' to update URL", name)
@@ -464,6 +481,9 @@ func ListSites() {
 
 // GetResponseFromURL returns *http.Response from url
 func GetResponseFromURL(url string) (resp *http.Response, ok bool) {
+	if err := validateSiteURL(url); err != nil {
+		return resp, false
+	}
 	c := GetConfig()
 	client := &http.Client{Timeout: time.Duration(c.Timeout) * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
@@ -476,7 +496,12 @@ func GetResponseFromURL(url string) (resp *http.Response, ok bool) {
 		return resp, false
 	}
 	if resp.StatusCode != 200 {
+		resp.Body.Close()
 		return resp, false
+	}
+	resp.Body = limitedReadCloser{
+		Reader: io.LimitReader(resp.Body, maxResponseBodyBytes),
+		Closer: resp.Body,
 	}
 	return resp, true
 }
@@ -598,6 +623,9 @@ func URLJoin(baseURL string, relURL string) string {
 
 // CheckNetWorkFromURL function checks network status
 func CheckNetWorkFromURL(url string) bool {
+	if err := validateSiteURL(url); err != nil {
+		return false
+	}
 	c := GetConfig()
 	client := &http.Client{Timeout: time.Duration(c.Timeout) * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
@@ -686,6 +714,56 @@ func RemoveNonAscII(s string) string {
 		}
 	}
 	return result.String()
+}
+
+func normalizeConfig(c *Config) {
+	if c.Sites == nil {
+		c.Sites = map[string]SiteConfig{}
+	}
+	if c.UserAgent == "" {
+		c.UserAgent = UserAgent
+	}
+	if c.Timeout <= 0 {
+		c.Timeout = 10
+	}
+	for name, site := range c.Sites {
+		if site.Language != "kr" && site.Language != "jp" {
+			site.Enabled = false
+		}
+		if validateSiteURL(site.URL) != nil {
+			site.Enabled = false
+		}
+		c.Sites[name] = site
+	}
+}
+
+func validateSiteURL(rawURL string) error {
+	u, err := url.ParseRequestURI(strings.TrimSpace(rawURL))
+	if err != nil {
+		return fmt.Errorf("invalid site URL %q: %w", rawURL, err)
+	}
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return fmt.Errorf("invalid site URL %q: scheme must be http or https", rawURL)
+	}
+	if u.Host == "" || u.User != nil {
+		return fmt.Errorf("invalid site URL %q: host is required and credentials are not allowed", rawURL)
+	}
+	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("invalid site URL %q: host is required", rawURL)
+	}
+	if ip := net.ParseIP(host); ip != nil && !isPublicIP(ip) {
+		return fmt.Errorf("invalid site URL %q: private, loopback, and link-local IPs are not allowed", rawURL)
+	}
+	return nil
+}
+
+func isPublicIP(ip net.IP) bool {
+	return !ip.IsLoopback() &&
+		!ip.IsPrivate() &&
+		!ip.IsLinkLocalUnicast() &&
+		!ip.IsLinkLocalMulticast() &&
+		!ip.IsUnspecified()
 }
 
 func init() {
